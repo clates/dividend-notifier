@@ -9,6 +9,7 @@ portfolio:
   max_position_size_pct: 0.05
   slippage_pct: 0.0005
   account_type: tax_advantaged
+  min_market_cap_b: 200
 
 schedule:
   daily_time: "08:00"

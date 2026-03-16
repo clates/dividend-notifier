@@ -5,18 +5,28 @@ from apscheduler.triggers.cron import CronTrigger
 from daily_runner import run_daily
 from weekly_runner import run_weekly
 import pytz
+import traceback
+from log_config import get_logger
+
+log = get_logger("scheduler")
 
 
 def job_wrapper(func):
+    job_name = func.__name__
+    log.info("=" * 60)
+    log.info("JOB STARTING: %s", job_name)
+    log.info("=" * 60)
     try:
         func()
+        log.info("JOB COMPLETE: %s", job_name)
     except Exception as e:
-        print(f"Error executing job: {e}")
+        log.error("JOB FAILED: %s — %s", job_name, e)
+        log.error("Traceback:\n%s", traceback.format_exc())
 
 
 if __name__ == "__main__":
     tz = os.environ.get("TZ", "America/New_York")
-    print(f"Starting scheduler with timezone: {tz}")
+    log.info("Starting scheduler with timezone: %s", tz)
 
     scheduler = BlockingScheduler(timezone=pytz.timezone(tz))
 
@@ -27,6 +37,7 @@ if __name__ == "__main__":
         args=[run_daily],
         name="daily_signal",
     )
+    log.info("Scheduled: daily_signal — Mon-Fri 08:00 %s", tz)
 
     # Weekly recap at 8:00 AM ET on Saturdays
     scheduler.add_job(
@@ -35,9 +46,10 @@ if __name__ == "__main__":
         args=[run_weekly],
         name="weekly_recap",
     )
+    log.info("Scheduled: weekly_recap — Sat 08:00 %s", tz)
 
-    print("Jobs scheduled. Waiting for first run...")
+    log.info("All jobs scheduled. Waiting for next trigger...")
     try:
         scheduler.start()
     except (KeyboardInterrupt, SystemExit):
-        pass
+        log.info("Scheduler stopped.")
