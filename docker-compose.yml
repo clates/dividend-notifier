@@ -1,0 +1,12 @@
+services:
+  dividend-notifier:
+    build: .
+    container_name: dividend-notifier
+    restart: unless-stopped
+    volumes:
+      - ./state:/app/state
+    environment:
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GITHUB_REPO=${GITHUB_REPO}
+      - TZ=America/New_York
