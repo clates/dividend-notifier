@@ -7,6 +7,7 @@ from datetime import datetime
 from live_data_fetcher import LiveDataFetcher
 from notifier_engine import NotifierEngine
 from discord_notifier import DiscordNotifier
+from email_notifier import EmailNotifier
 from github_publisher import GitHubPublisher
 from report_generator import ReportGenerator
 from strategies.loyal_dividend_portfolio_strategy import LoyalDividendPortfolioStrategy
@@ -181,10 +182,9 @@ def run_daily():
             "Signal log not found at %s — skipping CSV publish", engine.log_path
         )
 
-    # 10. Discord notification
-    log.info("Step 10/10 — Sending Discord notification")
-    discord = DiscordNotifier(os.environ.get("DISCORD_WEBHOOK_URL"))
-    discord.send_daily_signal(
+    # 10. Notifications — Discord + Email
+    log.info("Step 10/10 — Sending notifications")
+    shared_payload = dict(
         date_str=date_str,
         summary=summary,
         actions=actions,
@@ -194,6 +194,12 @@ def run_daily():
         upcoming=upcoming,
         config=config,
     )
+
+    discord = DiscordNotifier(os.environ.get("DISCORD_WEBHOOK_URL"))
+    discord.send_daily_signal(**shared_payload)
+
+    email = EmailNotifier()
+    email.send_daily_signal(**shared_payload)
 
     log.info("=" * 60)
     log.info(
