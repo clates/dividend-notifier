@@ -65,7 +65,7 @@ class NotifierEngine:
             "Ticker": ticker,
             "Action": action,
             "Price": round(float(price), 2),
-            "Shares": int(shares),
+            "Shares": round(float(shares), 6),
             "Value": round(float(value), 2),
             "CashReserves": round(float(self.state["cash"]), 2),
             "PricePnL": round(float(pnl), 2) if pnl is not None else None,
@@ -74,7 +74,7 @@ class NotifierEngine:
             "Reason": reason,
         }
         log.debug(
-            "Logging action: %s %s @ $%.2f × %d shares = $%.2f | reason=%s",
+            "Logging action: %s %s @ $%.2f × %.4f shares = $%.2f | reason=%s",
             action,
             ticker,
             float(price),
@@ -129,7 +129,7 @@ class NotifierEngine:
                 self.state["cash"] += dividend_received
                 info["captured_dividends"] += dividend_received
                 log.info(
-                    "DIVIDEND: %s — $%.4f/share × %d shares = $%.2f received (cash now $%.2f)",
+                    "DIVIDEND: %s — $%.4f/share × %.4f shares = $%.2f received (cash now $%.2f)",
                     ticker,
                     div_per_share,
                     info["shares"],
@@ -183,7 +183,7 @@ class NotifierEngine:
 
                 self.state["cash"] += proceeds
                 log.info(
-                    "SELL: %s — %d shares @ $%.2f = $%.2f proceeds | "
+                    "SELL: %s — %.4f shares @ $%.2f = $%.2f proceeds | "
                     "price_pnl=$%.2f, divs_captured=$%.2f, total_pnl=$%.2f (%.1f%%)",
                     ticker,
                     shares,
@@ -248,37 +248,56 @@ class NotifierEngine:
             target_inv = current_equity * pos_size_pct
             actual_inv = min(target_inv, self.state["cash"])
 
-            if actual_inv < price:
+            if actual_inv <= 0:
                 log.warning(
-                    "BUY skipped: %s — insufficient funds (need $%.2f, have $%.2f)",
+                    "BUY skipped: %s — no cash available (have $%.2f)",
                     ticker,
-                    price,
                     actual_inv,
                 )
                 continue
 
-            shares = int(actual_inv // price)
-            if shares > 0:
-                cost = shares * price
-                self.state["cash"] -= cost
-                days_to_div = int(to_div_row.get(ticker, 0))
-                exdiv_date = (current_date + pd.Timedelta(days=days_to_div)).strftime(
-                    "%Y-%m-%d"
-                )
-                self.state["holdings"][ticker] = {
+            shares = actual_inv / price
+            cost = shares * price
+            self.state["cash"] -= cost
+            days_to_div = int(to_div_row.get(ticker, 0))
+            exdiv_date = (current_date + pd.Timedelta(days=days_to_div)).strftime(
+                "%Y-%m-%d"
+            )
+            self.state["holdings"][ticker] = {
+                "shares": shares,
+                "entry_price": price,
+                "entry_date": current_date.strftime("%Y-%m-%d"),
+                "exdiv_date": exdiv_date,
+                "captured_dividends": 0.0,
+            }
+            log.info(
+                "BUY: %s — %.4f shares @ $%.2f = $%.2f (div in %d days, cash remaining $%.2f)",
+                ticker,
+                shares,
+                price,
+                cost,
+                days_to_div,
+                self.state["cash"],
+            )
+            self.log_action(
+                current_date,
+                ticker,
+                "BUY",
+                price,
+                shares,
+                cost,
+                f"Div in {days_to_div} days",
+            )
+            buys.append(
+                {
+                    "ticker": ticker,
+                    "price": price,
                     "shares": shares,
-                    "entry_price": price,
-                    "entry_date": current_date.strftime("%Y-%m-%d"),
-                    "exdiv_date": exdiv_date,
-                    "captured_dividends": 0.0,
+                    "cost": cost,
+                    "days_to_div": days_to_div,
+                    "alloc_pct": pos_size_pct * 100,
                 }
-            else:
-                log.warning(
-                    "BUY skipped: %s — 0 shares computable (price=$%.2f, available=$%.2f)",
-                    ticker,
-                    price,
-                    actual_inv,
-                )
+            )
 
         self.state["last_run"] = current_date.strftime("%Y-%m-%d")
         self.save_state()

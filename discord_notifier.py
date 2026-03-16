@@ -85,16 +85,16 @@ class DiscordNotifier:
         # ── Section 1: Trades today ──────────────────────────────────────
         if buys:
             lines = "\n".join(
-                f"• **{b['ticker']}** — {b['shares']} shares @ ${b['price']:,.2f}"
-                f" · div in {b['days_to_div']}d · cost ${b['cost']:,.0f}"
+                f"• **{b['ticker']}** — {b['shares']:.4f} sh @ ${b['price']:,.2f}"
+                f" · div in {b['days_to_div']}d · cost ${b['cost']:,.2f}"
                 for b in buys
             )
             fields.append({"name": "🟢 BOUGHT TODAY", "value": lines, "inline": False})
 
         if sells:
             lines = "\n".join(
-                f"• **{s['ticker']}** — PnL ${s['total_pnl']:+,.2f}"
-                f" ({s['total_pnl_pct']:+.1f}%)"
+                f"• **{s['ticker']}** — {s['shares']:.4f} sh"
+                f" · PnL ${s['total_pnl']:+,.2f} ({s['total_pnl_pct']:+.1f}%)"
                 for s in sells
             )
             fields.append({"name": "🔴 SOLD TODAY", "value": lines, "inline": False})
@@ -102,7 +102,7 @@ class DiscordNotifier:
         if dividends:
             lines = "\n".join(
                 f"• **{d['ticker']}** — ${d['amount']:,.2f}"
-                f" (${d['per_share']:.4f}/share × {d['shares']} shares)"
+                f" (${d['per_share']:.4f}/sh × {d['shares']:.4f} sh)"
                 for d in dividends
             )
             fields.append(
@@ -154,7 +154,7 @@ class DiscordNotifier:
                 key=lambda h: h.get("expected_exit") or "9999-99-99",
             )
             pos_lines = "\n".join(
-                f"• **{h['ticker']}** — {h['shares']} sh"
+                f"• **{h['ticker']}** — {h['shares']:.4f} sh"
                 f" · ex {h['exdiv_date'] or '?'}"
                 f" · exit ≈{h['expected_exit'] or '?'}"
                 f" · PnL ${h['unrealized_pnl']:+,.2f}"
