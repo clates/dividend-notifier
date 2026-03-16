@@ -1,0 +1,8 @@
+state/data/
+state/portfolio_state.json
+state/signal_log.csv
+venv/
+__pycache__/
+*.pyc
+.env
+sp500_tickers.txt.bak
